@@ -16,12 +16,14 @@ process.on('unhandledRejection', err => {
 });
 
 const spawn = require('react-dev-utils/crossSpawn');
+// yarn run start命令等同的消息命令：node react-scripts地址 start
 const args = process.argv.slice(2);
 
 const scriptIndex = args.findIndex(
   x => x === 'build' || x === 'eject' || x === 'start' || x === 'test'
 );
 const script = scriptIndex === -1 ? args[0] : args[scriptIndex];
+// 如果传入的启动命令之前还有其他参数，则截取从他前面从参数。 传递给待启动的子程序
 const nodeArgs = scriptIndex > 0 ? args.slice(0, scriptIndex) : [];
 
 switch (script) {
@@ -29,6 +31,7 @@ switch (script) {
   case 'eject':
   case 'start':
   case 'test': {
+    // 运行react0-scripts根目录下的scripts/启动命令名对应的js文件名
     const result = spawn.sync(
       'node',
       nodeArgs

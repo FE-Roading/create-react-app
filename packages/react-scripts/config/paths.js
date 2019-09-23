@@ -4,6 +4,10 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ * 返回项目主要配置对应的路径，主要有以下几种情况处理：
+  1、已通过npm(yarn) eject暴露webpack配置的项目，会查找project/config，因此此种情况下必须修改改文件夹内的配置。
+  2、未暴露webpack配置文件的项目，会查找project/node_modules/react-scripts。
+  3、在react-create-script的github项目中，开发调试react-scripts时，会查找create-react-app/packages/react-scripts/config。
  */
 // @remove-on-eject-end
 'use strict';
@@ -14,11 +18,18 @@ const url = require('url');
 
 // Make sure any symlinks in the project folder are resolved:
 // https://github.com/facebook/create-react-app/issues/637
+// 项目根目录
 const appDirectory = fs.realpathSync(process.cwd());
+// 返回与项目根目录凭借的目录地址
 const resolveApp = relativePath => path.resolve(appDirectory, relativePath);
-
+// 格式为；/app1这种，getServedPath中有详细说明
 const envPublicUrl = process.env.PUBLIC_URL;
 
+/**
+ * 对传入地址的末尾的/按需求进行保留、添加、删除
+ * @param {string} inputPath 出入地址
+ * @param {boolean} needsSlash 是否需要/
+ */
 function ensureSlash(inputPath, needsSlash) {
   const hasSlash = inputPath.endsWith('/');
   if (hasSlash && !needsSlash) {
@@ -30,6 +41,11 @@ function ensureSlash(inputPath, needsSlash) {
   }
 }
 
+/**
+ * 静态资源路径前缀：webpack打包时，对应静态文件的前置路径。与nginx部署时，项目文件夹下对应的多个子项目的类型。getServedPath中有详细说明
+ * 来源是：process.env.PUBLIC_URL[格式如：/app1]或package.json对应的homepage字段[格式为：http://www.baidu.com/app1/]
+ * @param {object} appPackageJson package.json配置
+ */
 const getPublicUrl = appPackageJson =>
   envPublicUrl || require(appPackageJson).homepage;
 
@@ -61,6 +77,11 @@ const moduleFileExtensions = [
 ];
 
 // Resolve file paths in the same order as webpack
+/**
+ * 查找项目文件夹下对应路径filePath的路径。文件类型：优先按moduleFileExtensions配置批次，存在则返回路径，不存在则当成js文件路径返回
+ * @param {目录定位函数} resolveFn
+ * @param {文件路径及名称} filePath
+ */
 const resolveModule = (resolveFn, filePath) => {
   const extension = moduleFileExtensions.find(extension =>
     fs.existsSync(resolveFn(`${filePath}.${extension}`))
@@ -74,6 +95,7 @@ const resolveModule = (resolveFn, filePath) => {
 };
 
 // config after eject: we're in ./config/
+// 在暴露webpack配置之后， 配置路径：项目文件夹下的config文件夹
 module.exports = {
   dotenv: resolveApp('.env'),
   appPath: resolveApp('.'),
@@ -94,9 +116,11 @@ module.exports = {
 };
 
 // @remove-on-eject-begin
+// react-scripts的根目录地址
 const resolveOwn = relativePath => path.resolve(__dirname, '..', relativePath);
 
 // config before eject: we're in ./node_modules/react-scripts/config/
+// 在暴露webpack配置之前， 配置路径：./node_modules/react-scripts/config/
 module.exports = {
   dotenv: resolveApp('.env'),
   appPath: resolveApp('.'),
@@ -120,14 +144,17 @@ module.exports = {
   appTypeDeclarations: resolveApp('src/react-app-env.d.ts'),
   ownTypeDeclarations: resolveOwn('lib/react-app.d.ts'),
 };
-
+// react-scripts的根目录的package.json
 const ownPackageJson = require('../package.json');
+// 项目中已安装的react-scripts的路径
 const reactScriptsPath = resolveApp(`node_modules/${ownPackageJson.name}`);
+// node_modules/react-scripts存在，且符号链接时返回为true
 const reactScriptsLinked =
   fs.existsSync(reactScriptsPath) &&
-  fs.lstatSync(reactScriptsPath).isSymbolicLink();
+  fs.lstatSync(reactScriptsPath).isSymbolicLink(); // 如果reactScriptsPath是符号链接，则返回 true。
 
 // config before publish: we're in ./packages/react-scripts/config/
+// 这种情况下是在react-create-script的github项目中，开发调试时输出的paths配置而已
 if (
   !reactScriptsLinked &&
   __dirname.indexOf(path.join('packages', 'react-scripts', 'config')) !== -1
@@ -152,7 +179,7 @@ if (
     // These properties only exist before ejecting:
     ownPath: resolveOwn('.'),
     ownNodeModules: resolveOwn('node_modules'),
-    appTypeDeclarations: resolveOwn('template/src/react-app-env.d.ts'),
+    appTypeDeclarations: resolveOwn('template/src/react-app-env.d.ts'), //这个配置差异
     ownTypeDeclarations: resolveOwn('lib/react-app.d.ts'),
   };
 }

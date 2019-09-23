@@ -15,18 +15,22 @@ process.env.NODE_ENV = 'development';
 // Makes the script crash on unhandled rejections instead of silently
 // ignoring them. In the future, promise rejections that are not handled will
 // terminate the Node.js process with a non-zero exit code.
+//process 绑定一个错误监听函数: 监听一些没有被.catch的Promise。
 process.on('unhandledRejection', err => {
   throw err;
 });
 
 // Ensure environment variables are read.
+// 加载自定义的环境变量配置，调整process.env.NODE_PATH内容
 require('../config/env');
 // @remove-on-eject-begin
 // Do the preflight check (only happens before eject).
+// 只有为eject之前，校验package.json
 const verifyPackageTree = require('./utils/verifyPackageTree');
 if (process.env.SKIP_PREFLIGHT_CHECK !== 'true') {
   verifyPackageTree();
 }
+// 校验TS脚本相关配置
 const verifyTypeScriptSetup = require('./utils/verifyTypeScriptSetup');
 verifyTypeScriptSetup();
 // @remove-on-eject-end
@@ -52,11 +56,13 @@ const useYarn = fs.existsSync(paths.yarnLockFile);
 const isInteractive = process.stdout.isTTY;
 
 // Warn and crash if required files are missing
+// 必要的入口文件检测：项目根目录下的public/index.html和src/index.js，不存在直接退出
 if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
   process.exit(1);
 }
 
 // Tools like Cloud9 rely on this.
+// 从环境变量HOST和PORT中读取地址和端口，没有则设置为'0.0.0.0'和3000
 const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
@@ -80,6 +86,17 @@ if (process.env.HOST) {
 // We require that you explicitly set browsers and do not fall back to
 // browserslist defaults.
 const { checkBrowsers } = require('react-dev-utils/browsersHelper');
+/********************
+  前端处理一堆环境变量，还有加载一堆配置，全都用在这一块。这里主要做的就是把环境变量和配置组装起来，开个webpack本地调试服务。主要做的事情有:
+  1、检测是否配置browserslist。如果最终都没有browserlist则直接退出
+  2. 查找可用端口：先确认默认端口是否可用，不可用则确认是否自动查找可用端口，不查找则直接退出，查找则返回一个可用端口
+  3. 配置createCompiler的options并执行，返回一个compiler
+  5. 载入代理配置，并配置代理服务prepareProxy
+  6. 创建开发服务配置，具体的配置代码放在webpackDevServer.config.js
+  7. 运行WebpackDevServer，传入compiler和proxyConfig，返回一个devServer
+  8. 启动devServer服务，如果在交互模式下清理控制台，再打开浏览器
+ * 
+ */
 checkBrowsers(paths.appPath, isInteractive)
   .then(() => {
     // We attempt to use the default port but if it is busy, we offer the user to
@@ -146,6 +163,7 @@ checkBrowsers(paths.appPath, isInteractive)
       openBrowser(urls.localUrlForBrowser);
     });
 
+    // 进程信号监听，将听到如下两个信号时，关闭服务器并关闭进程
     ['SIGINT', 'SIGTERM'].forEach(function(sig) {
       process.on(sig, function() {
         devServer.close();

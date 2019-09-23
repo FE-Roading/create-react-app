@@ -101,6 +101,22 @@ function printInstructions(appName, urls, useYarn) {
   console.log();
 }
 
+/**
+ * 主要工作如下:
+    1. 根据环境变量判断是否有冒烟测试的需求，如果有加一个 handleCompile，一有错误就中断程序。
+    2. 用传进来的配置和handleCompile生成一个webpackCompiler
+    2. 增加invalid钩子，一检测到更改文件，而且是交互式终端的话，先清空控制台，再输出日志
+    3. 增加done钩子，对webpack的输出日志整理统一输出
+ * @param {
+ * appName, // 项目名称
+ * config, // webpack配置
+ * devSocket, // socket通信的接口
+ * urls, // 可访问的url数组
+ * useYarn, // 是否使用yarn
+ * useTypeScript, // 是否使用ts
+ * webpack, // webpack模块
+ * } param 
+ */
 function createCompiler({
   appName,
   config,

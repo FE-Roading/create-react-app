@@ -4,6 +4,11 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ * 返回对应的JS或TS配置，编译选项compilerOptions的baseUrl查找的路径数组：只允许最多存在一个配置：ts或js
+ * 返回的数据结构：{ 
+      additionalModulePaths, //为路径数组或null
+      hasTsConfig, //boolean
+ * }
  */
 // @remove-on-eject-end
 'use strict';
@@ -16,8 +21,11 @@ const resolve = require('resolve');
 
 /**
  * Get the baseUrl of a compilerOptions object.
- *
  * @param {Object} options
+ * 运行过程如下：根据options.baseUrl返回值
+ * 1、options.baseUrl不存在或为undefined，返回process.env.NODE_PATH中的非空路径组成的数组
+ * 2、options.baseUrl是node_modules, 返回为null
+ * 3、options.baseUrl是项目根目录，返回[项目根目录]
  */
 function getAdditionalModulePaths(options = {}) {
   const baseUrl = options.baseUrl;
@@ -55,11 +63,19 @@ function getAdditionalModulePaths(options = {}) {
   );
 }
 
+/**
+ * 获取对应的模块配置中， 编译选项compilerOptions的baseUrl查找的路径数组：只允许最多存在一个配置：ts或js
+ * @param return {
+ *    additionalModulePaths, //为路径数组或null
+      hasTsConfig, //boolean
+ * }
+ */
 function getModules() {
   // Check if TypeScript is setup
   const hasTsConfig = fs.existsSync(paths.appTsConfig);
   const hasJsConfig = fs.existsSync(paths.appJsConfig);
 
+  // 只允许存在一个配置
   if (hasTsConfig && hasJsConfig) {
     throw new Error(
       'You have both a tsconfig.json and a jsconfig.json. If you are using TypeScript please remove your jsconfig.json file.'
