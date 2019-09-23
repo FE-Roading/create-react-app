@@ -63,6 +63,7 @@ const errorLogFilePatterns = [
 
 let projectName;
 
+/******************commander解析传入参数*****************/
 const program = new commander.Command(packageJson.name)
   .version(packageJson.version)
   .arguments('<project-directory>')
@@ -123,7 +124,10 @@ const program = new commander.Command(packageJson.name)
     console.log();
   })
   .parse(process.argv);
+/******************传入参数解析完成*****************/
 
+/*********************start***************************/
+// 如果传入了--info参数，则显示当前服务器环境
 if (program.info) {
   console.log(chalk.bold('\nEnvironment Info:'));
   return envinfo
@@ -142,7 +146,9 @@ if (program.info) {
     )
     .then(console.log);
 }
-
+/*********************end***************************/
+/*********************start***************************/
+// 如果未传入项目名称，则直接退出
 if (typeof projectName === 'undefined') {
   console.error('Please specify the project directory:');
   console.log(
@@ -157,6 +163,7 @@ if (typeof projectName === 'undefined') {
   );
   process.exit(1);
 }
+/*********************end***************************/
 
 function printValidationResults(results) {
   if (typeof results !== 'undefined') {
@@ -165,7 +172,7 @@ function printValidationResults(results) {
     });
   }
 }
-
+// 检测是否采传入了--internal-testing-template的参数及值 —— 项目模板文件夹：react-scripts中查找时，是以命令运行目录为基础目录进行查找
 const hiddenProgram = new commander.Command()
   .option(
     '--internal-testing-template <path-to-template>',
@@ -173,15 +180,15 @@ const hiddenProgram = new commander.Command()
       'use a non-standard application template'
   )
   .parse(process.argv);
-
+// createApp
 createApp(
-  projectName,
-  program.verbose,
-  program.scriptsVersion,
-  program.useNpm,
-  program.usePnp,
-  program.typescript,
-  hiddenProgram.internalTestingTemplate
+  projectName, // 项目名称
+  program.verbose, // 是否打印本地日志。其实是npm和yarn安装外部依赖包可以加的选项，可以打印安装有错时的信息。
+  program.scriptsVersion, // 额外指定的react-scripts版本，格式：react-scripts@0.9.x
+  program.useNpm, // 是否使用npm
+  program.usePnp, // 是否使用yarn pnp功能
+  program.typescript, // 是否使用ts
+  hiddenProgram.internalTestingTemplate // 项目模板文件夹
 );
 
 function createApp(
@@ -196,15 +203,18 @@ function createApp(
   const root = path.resolve(name);
   const appName = path.basename(root);
 
+  // 检测项目名称是否有效：有效字符串[不含空格、不是以.、_开头，收尾不含空格、未在名称的黑名单中]、且不是react、react-dom、react-scripts名称
   checkAppName(appName);
+  // 确保新的项目目录存在，没有则创建一个
   fs.ensureDirSync(name);
+  // 如果前期已存在的项目文件夹，为保证后续不会出现冲突，按白名单检测允许存在的文件，如果有其他文件存在则报错后退出
   if (!isSafeToCreateProjectIn(root, name)) {
     process.exit(1);
   }
 
   console.log(`Creating a new React app in ${chalk.green(root)}.`);
   console.log();
-
+  // 初始化package.json对象，并写入到当前的项目更目录下面
   const packageJson = {
     name: appName,
     version: '0.1.0',
@@ -214,36 +224,36 @@ function createApp(
     path.join(root, 'package.json'),
     JSON.stringify(packageJson, null, 2) + os.EOL
   );
-
+  // 确定初始化命令中是否指定使用yarn，是则验证yarn是否已安装——未安装则报错退出
   const useYarn = useNpm ? false : shouldUseYarn();
   const originalDirectory = process.cwd();
   process.chdir(root);
   if (!useYarn && !checkThatNpmCanReadCwd()) {
     process.exit(1);
   }
-
+  // 如果NodeJS的版本小于8.10，则使用react-scripts@0.9.x
   if (!semver.satisfies(process.version, '>=8.10.0')) {
     console.log(
       chalk.yellow(
-        `You are using Node ${
-          process.version
-        } so the project will be bootstrapped with an old unsupported version of tools.\n\n` +
+        `You are using Node ${process.version} so the project will be bootstrapped with an old unsupported version of tools.\n\n` +
           `Please update to Node 8.10 or higher for a better, fully supported experience.\n`
       )
     );
     // Fall back to latest supported react-scripts on Node 4
     version = 'react-scripts@0.9.x';
   }
-
+  /***
+   * 检测包管理工具，是否使用yarn？
+   *   >是：是否使用pnp特性，如果yarn版本小于1.12时，也还是会直接使用yarn工具而将usePnp标志位=false
+   *   >否：检测npm版本，如果小于5.0则使用react-scripts@0.9.x
+   */
   if (!useYarn) {
     const npmInfo = checkNpmVersion();
     if (!npmInfo.hasMinNpm) {
       if (npmInfo.npmVersion) {
         console.log(
           chalk.yellow(
-            `You are using npm ${
-              npmInfo.npmVersion
-            } so the project will be bootstrapped with an old unsupported version of tools.\n\n` +
+            `You are using npm ${npmInfo.npmVersion} so the project will be bootstrapped with an old unsupported version of tools.\n\n` +
               `Please update to npm 5 or higher for a better, fully supported experience.\n`
           )
         );
@@ -257,9 +267,7 @@ function createApp(
       if (yarnInfo.yarnVersion) {
         console.log(
           chalk.yellow(
-            `You are using Yarn ${
-              yarnInfo.yarnVersion
-            } together with the --use-pnp flag, but Plug'n'Play is only supported starting from the 1.12 release.\n\n` +
+            `You are using Yarn ${yarnInfo.yarnVersion} together with the --use-pnp flag, but Plug'n'Play is only supported starting from the 1.12 release.\n\n` +
               `Please update to Yarn 1.12 or higher for a better, fully supported experience.\n`
           )
         );
@@ -268,7 +276,7 @@ function createApp(
       usePnp = false;
     }
   }
-
+  // 如果使用了yarn，检测默认的安装源是否是https://registry.yarnpkg.com，是——将script下的yarn.lock.cached复制到项目根目录，并重命名为yarn.lock
   if (useYarn) {
     let yarnUsesDefaultRegistry = true;
     try {
@@ -288,15 +296,15 @@ function createApp(
   }
 
   run(
-    root,
-    appName,
-    version,
-    verbose,
-    originalDirectory,
-    template,
-    useYarn,
-    usePnp,
-    useTypescript
+    root, // 项目根目录
+    appName, // 项目名称
+    version, // 指定的react-scripts版本，格式：react-scripts@0.9.x
+    verbose, // create-react-app命令中传入的额外参数：是否打印本地日志。其实是npm和yarn安装外部依赖包可以加的选项，可以打印安装有错时的信息。
+    originalDirectory, // 命令执行目录
+    template, // create-react-app命令中传入的额外参数：项目模板文件夹
+    useYarn, // 是否使用yarn安装工具
+    usePnp, // 是否使用yarn pnp功能
+    useTypescript // 是否使用ts
   );
 }
 
@@ -308,7 +316,7 @@ function shouldUseYarn() {
     return false;
   }
 }
-
+// 单独启动进程安装所有依赖包
 function install(root, useYarn, usePnp, dependencies, verbose, isOnline) {
   return new Promise((resolve, reject) => {
     let command;
@@ -382,7 +390,9 @@ function run(
   usePnp,
   useTypescript
 ) {
+  // 明确react-scripts的版本，如果未明确指定版本，则直接使用最新版. 返回数据存在多种格式：如react-scripts@0.9.x、http格式、压缩包根式，file://格式等
   getInstallPackage(version, originalDirectory).then(packageToInstall => {
+    // 生成必要的安装依赖数组
     const allDependencies = ['react', 'react-dom', packageToInstall];
     if (useTypescript) {
       allDependencies.push(
@@ -397,6 +407,7 @@ function run(
     }
 
     console.log('Installing packages. This might take a couple of minutes.');
+    // 从多个格式中，解析出正确的react-scripts依赖包名
     getPackageName(packageToInstall)
       .then(packageName =>
         checkIfOnline(useYarn).then(isOnline => ({
@@ -414,29 +425,37 @@ function run(
         );
         console.log();
 
+        // 单独启动进程安装所有依赖包
         return install(
-          root,
-          useYarn,
-          usePnp,
-          allDependencies,
-          verbose,
-          isOnline
+          root, // 项目根目录
+          useYarn, // 是否使用yarn
+          usePnp, // 是否使用yarn的pnp功能
+          allDependencies, // 所有依赖包数据
+          verbose, //  create-react-app命令中传入的额外参数：是否打印本地日志。其实是npm和yarn安装外部依赖包可以加的选项，可以打印安装有错时的信息。
+          isOnline // 是否有网络
         ).then(() => packageName);
       })
       .then(async packageName => {
+        // 如果已安装好的依赖中，检测运行的node版本是否满足react-scripts的package.json中指定的node版本要求，不符合则直接退出
         checkNodeVersion(packageName);
+        // 确认新项目下的package.json的dependencies中，必须存在react-scripts，修正并更新react、react-dom版本信息
         setCaretRangeForRuntimeDeps(packageName);
 
         const pnpPath = path.resolve(process.cwd(), '.pnp.js');
-
         const nodeArgs = fs.existsSync(pnpPath) ? ['--require', pnpPath] : [];
 
+        /******
+         * 在项目根目录下，启子进程执行如下命令：
+         * var init = require('react-scripts/scripts/init.js');
+         * init.apply(null, [项目根目录，项目名称，是否打印日志，命令执行目录, create-react-app命令中传入的额外参数：指定的模板文件路径]);
+         ******/
+        //  const  rscriptDirectory=`G:/source-code/create-react-app/packages/${packageName}`
         await executeNodeScript(
           {
-            cwd: process.cwd(),
+            cwd: process.cwd(), // 项目更目录
             args: nodeArgs,
           },
-          [root, appName, verbose, originalDirectory, template],
+          [root, appName, verbose, originalDirectory, template], //
           `
         var init = require('${packageName}/scripts/init.js');
         init.apply(null, JSON.parse(process.argv[1]));
@@ -497,17 +516,26 @@ function run(
       });
   });
 }
-
+/**
+ * 明确react-scripts的版本，如果未明确指定版本，则直接使用最新版
+ * @return react-scripts版本字符串
+ * @param {string} version 特别指定react-scripts版本：常规设置的格式为：react-scripts@0.9.x
+ * @param {string} originalDirectory 命令执行目录
+ */
 function getInstallPackage(version, originalDirectory) {
   let packageToInstall = 'react-scripts';
-  const validSemver = semver.valid(version);
+  /*************start*************/
+  // 设置react-scripts有效版本
+  const validSemver = semver.valid(version); // 如果传入的版本字符串，如0.9.x
   if (validSemver) {
     packageToInstall += `@${validSemver}`;
   } else if (version) {
     if (version[0] === '@' && version.indexOf('/') === -1) {
+      // 如果传入的版本字符串是, 以@开头切不包含/。如@0.9.x
       packageToInstall += version;
     } else if (version.match(/^file:/)) {
       packageToInstall = `file:${path.resolve(
+        // 如果传入的是以file:开头指定的路径，则与react-create-app的绝对路径进行拼接成新的地址
         originalDirectory,
         version.match(/^file:(.*)?$/)[1]
       )}`;
@@ -516,6 +544,7 @@ function getInstallPackage(version, originalDirectory) {
       packageToInstall = version;
     }
   }
+  /*************end*************/
 
   const scriptsToWarn = [
     {
@@ -525,7 +554,7 @@ function getInstallPackage(version, originalDirectory) {
       ),
     },
   ];
-
+  // 如果明确指定的是使用react-scripts-ts，则输入警告信息react-scripts-ts已经被剥离，是否继续使用这种方式，是则继续返回，否则正常退出
   for (const script of scriptsToWarn) {
     if (packageToInstall.startsWith(script.name)) {
       return inquirer
@@ -539,7 +568,6 @@ function getInstallPackage(version, originalDirectory) {
           if (!answer.useScript) {
             process.exit(0);
           }
-
           return packageToInstall;
         });
     }
@@ -761,9 +789,14 @@ function makeCaretRange(dependencies, name) {
 
   dependencies[name] = patchedVersion;
 }
-
+/**
+ * 确认在新建项目目录中，package.json的dependencies是否存在react-scripts？没有直接报错终止
+ * 顺便确认并修正react、react-dom版本信息，并更新到package.json中
+ * @param {string} packageName ""
+ */
 function setCaretRangeForRuntimeDeps(packageName) {
   const packagePath = path.join(process.cwd(), 'package.json');
+  // 当前新建项目目录下的package.json地址
   const packageJson = require(packagePath);
 
   if (typeof packageJson.dependencies === 'undefined') {
@@ -776,10 +809,10 @@ function setCaretRangeForRuntimeDeps(packageName) {
     console.error(chalk.red(`Unable to find ${packageName} in package.json`));
     process.exit(1);
   }
-
+  // 确认并修正react、react-dom版本信息
   makeCaretRange(packageJson.dependencies, 'react');
   makeCaretRange(packageJson.dependencies, 'react-dom');
-
+  // 更新package.json信息
   fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + os.EOL);
 }
 
@@ -947,6 +980,29 @@ function checkIfOnline(useYarn) {
   });
 }
 
+/**
+   * 启动进程执行额外的node命令，最终执行的命令格式如下：
+   spawn(
+      process.execPath, // nodeJS的路径
+      [
+          ...nodeArgs, 
+          '-e',  //执行指定的脚本
+          `
+          var init = require('${packageName}/scripts/init.js');
+          init.apply(null, JSON.parse(process.argv[1]));
+          `, 
+          '--',
+          JSON.stringify([root, appName, verbose, originalDirectory, template])
+      ],
+      {
+          cwd: process.cwd(), //项目根目录，指定该进程的工作目录
+          stdio: 'inherit'
+      }
+  )
+ 实际效果：在项目根目录下，启子进程执行如下命令：
+  var init = require('react-scripts/scripts/init.js');
+  init.apply(null, [root, appName, verbose, originalDirectory, template]);
+    **/
 function executeNodeScript({ cwd, args }, data, source) {
   return new Promise((resolve, reject) => {
     const child = spawn(

@@ -76,16 +76,19 @@ function tryGitInit(appPath) {
 }
 
 module.exports = function(
-  appPath,
-  appName,
-  verbose,
-  originalDirectory,
-  template
+  appPath, // 项目根目录
+  appName, // 项目名称
+  verbose, // 是否打印日志
+  originalDirectory, // 命令执行目录
+  template // create-react-app命令中传入的额外参数：指定的模板文件路径
 ) {
+  // react-scripts脚本的根目录：
   const ownPath = path.dirname(
     require.resolve(path.join(__dirname, '..', 'package.json'))
   );
+  // 项目根目录下的package.json
   const appPackage = require(path.join(appPath, 'package.json'));
+  // 如果项目根目录下存在yarn.lock，useYarn为true
   const useYarn = fs.existsSync(path.join(appPath, 'yarn.lock'));
 
   // Copy over some of the devDependencies
@@ -93,7 +96,7 @@ module.exports = function(
 
   const useTypeScript = appPackage.dependencies['typescript'] != null;
 
-  // Setup the script rules
+  // Setup the script rules：添加启动命令
   appPackage.scripts = {
     start: 'react-scripts start',
     build: 'react-scripts build',
@@ -114,6 +117,7 @@ module.exports = function(
     JSON.stringify(appPackage, null, 2) + os.EOL
   );
 
+  // 如果项目根目录中有README.md，将其重命名为README.old.md
   const readmeExists = fs.existsSync(path.join(appPath, 'README.md'));
   if (readmeExists) {
     fs.renameSync(
@@ -122,7 +126,14 @@ module.exports = function(
     );
   }
 
-  // Copy the files for the user
+  /****************************************
+   * 1、设置项目模板文件目录：
+   *  > 如果create-react-app命令中传入了项目模板文件，则指定为启动命令目录下的指定文件夹。
+   *  > 如果没有传入，检测是否使用ts，已使用则指定为react-scripts脚本目录下的template-typescript，没有则指定为react-scripts脚本目录下的template
+  const templatePath = template
+   * 2、复制模板文件：如果模板文件不存在，则直接报错返回undefined；如果存在，则全部复制到项目根目录下
+   * 
+  ***************************************/
   const templatePath = template
     ? path.resolve(originalDirectory, template)
     : path.join(ownPath, useTypeScript ? 'template-typescript' : 'template');
@@ -167,6 +178,7 @@ module.exports = function(
   args.push('react', 'react-dom');
 
   // Install additional template dependencies, if present
+  // 如果此处找到项目根目录下存在额外的项目依赖配置文件，则将其添加到依赖数组中以便于后续安装。读取完成后自动删除
   const templateDependenciesPath = path.join(
     appPath,
     '.template.dependencies.json'
@@ -184,6 +196,7 @@ module.exports = function(
   // Install react and react-dom for backward compatibility with old CRA cli
   // which doesn't install react and react-dom along with react-scripts
   // or template is presetend (via --internal-testing-template)
+  // cli兼容性处理：依赖包重新安装 —— 如果已安装react和react-dom且没有预设模板文件时，才不重复安装依赖
   if (!isReactInstalled(appPackage) || template) {
     console.log(`Installing react and react-dom using ${command}...`);
     console.log();
@@ -194,26 +207,26 @@ module.exports = function(
       return;
     }
   }
-
+  // 如果使用TS，完成相关配置及检测
   if (useTypeScript) {
     verifyTypeScriptSetup();
   }
-
+  // 尝试初始化git版本管理
   if (tryGitInit(appPath)) {
     console.log();
     console.log('Initialized a git repository.');
   }
-
+  /************至此，整个项目创建工作基本完成，余下的就是输出一些创建信息*****************/
   // Display the most elegant way to cd.
   // This needs to handle an undefined originalDirectory for
   // backward compatibility with old global-cli's.
+  // 兼容性处理：设置要进入的项目文件夹
   let cdpath;
   if (originalDirectory && path.join(originalDirectory, appName) === appPath) {
     cdpath = appName;
   } else {
     cdpath = appPath;
   }
-
   // Change displayed command to yarn instead of yarnpkg
   const displayedCommand = useYarn ? 'yarn' : 'npm';
 

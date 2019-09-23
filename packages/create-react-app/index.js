@@ -39,7 +39,7 @@
 var currentNodeVersion = process.versions.node;
 var semver = currentNodeVersion.split('.');
 var major = semver[0];
-
+// NodeJS 的版本低于v8直接报错并退出
 if (major < 8) {
   console.error(
     'You are running Node ' +
