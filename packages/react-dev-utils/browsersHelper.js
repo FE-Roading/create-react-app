@@ -46,7 +46,7 @@ function shouldSetBrowsers(isInteractive) {
 /**
  * 检测是否配置browserslist:
  *   > 有则为resolve;
- *   > 没有则需要确认是否需要设置：如果是非console模式，默认为设置默认值；如果是console模式，由用户选择是否设置，不设置则直接退出
+ *   > 没有则需要确认是否需要设置：如果是非console模式，默认为设置默认值；如果是console模式，由用户选择是否设置，不设置则直接reject
  *   > browserlist的三种配置方式： browserslist文件、.browserslistrc文件、package.json的browserslist字段
  * @param {string} dir 项目目录
  * @param {boolean} isInteractive 是console模式

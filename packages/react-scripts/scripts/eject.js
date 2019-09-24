@@ -68,8 +68,8 @@ console.log();
  * 2、如果有git源代码管理工具？否——继续；是——是否有未保存的记录？是——退出，否继续
  * 3、读取react-scripts待复制的文件夹及其下的文件，分别确认所有内容在项目根目录下是否存在，有一个存在则直接退出。检测的文件夹：['config', 'config/jest', 'scripts']
  * 4、生成相关的jest配置：jestConfig
- * 5、在项目目录下，创建待复制的文件件
- * 6、相关文件复制：在文件复制文件时，替换掉@remove-on-eject-begin...@remove-on-eject-end之间的内容
+ * 5、在项目目录下，创建待复制的文件夹
+ * 6、相关文件复制：相关文件复制：在文件复制文件时，删除文件内容@remove-on-eject-begin...@remove-on-eject-end
  * 7、package.json配置修改并保存：
  *   > devDependencies、dependencies中删除react-scripts
  *   > dependencies依赖添加：react-scripts的dependencies中，除了也属于optionalDependencies的所有依赖，全部添加到项目依赖中
