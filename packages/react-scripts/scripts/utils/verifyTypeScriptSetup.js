@@ -23,8 +23,9 @@ function writeJson(fileName, object) {
     JSON.stringify(object, null, 2).replace(/\n/g, os.EOL) + os.EOL
   );
 }
-
+// 校验没有ts文件：没有返回为true
 function verifyNoTypeScript() {
+  // 查找出所有的ts相关文件
   const typescriptFiles = globby(
     ['**/*.(ts|tsx)', '!**/node_modules', '!**/*.d.ts'],
     { cwd: paths.appSrc }
@@ -46,6 +47,7 @@ function verifyNoTypeScript() {
 function verifyTypeScriptSetup() {
   let firstTimeSetup = false;
 
+  // 如果没有TS配置：项目中有没有ts相关文件？没有直接返回，有设置appTsConfig为空并将标志位firstTimeSetup置为true
   if (!fs.existsSync(paths.appTsConfig)) {
     if (verifyNoTypeScript()) {
       return;
@@ -56,7 +58,7 @@ function verifyTypeScriptSetup() {
 
   const isYarn = fs.existsSync(paths.yarnLockFile);
 
-  // Ensure typescript is installed
+  // Ensure typescript is installed：载入TS模块：确认已安装typescript，没有直接退出
   let ts;
   try {
     ts = require(resolve.sync('typescript', {
@@ -90,7 +92,7 @@ function verifyTypeScriptSetup() {
     console.error();
     process.exit(1);
   }
-
+  // 生成TS编译选项
   const compilerOptions = {
     // These are suggested values and will be set when not present in the
     // tsconfig.json

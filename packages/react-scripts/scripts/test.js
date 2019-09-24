@@ -28,6 +28,7 @@ const verifyPackageTree = require('./utils/verifyPackageTree');
 if (process.env.SKIP_PREFLIGHT_CHECK !== 'true') {
   verifyPackageTree();
 }
+// 校验TS脚本相关配置
 const verifyTypeScriptSetup = require('./utils/verifyTypeScriptSetup');
 verifyTypeScriptSetup();
 // @remove-on-eject-end
@@ -36,6 +37,7 @@ const jest = require('jest');
 const execSync = require('child_process').execSync;
 let argv = process.argv.slice(2);
 
+// 判断源代码管理工具是否是：Git
 function isInGitRepository() {
   try {
     execSync('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
@@ -44,7 +46,7 @@ function isInGitRepository() {
     return false;
   }
 }
-
+// 判断源代码管理工具是否是：Mercurial
 function isInMercurialRepository() {
   try {
     execSync('hg --cwd . root', { stdio: 'ignore' });
@@ -55,12 +57,14 @@ function isInMercurialRepository() {
 }
 
 // Watch unless on CI or explicitly running all tests
+// 配置了CI且没有指定--watchAll选项
 if (
   !process.env.CI &&
   argv.indexOf('--watchAll') === -1 &&
   argv.indexOf('--watchAll=false') === -1
 ) {
   // https://github.com/facebook/create-react-app/issues/5210
+  // 是否有源码管理工具
   const hasSourceControl = isInGitRepository() || isInMercurialRepository();
   argv.push(hasSourceControl ? '--watch' : '--watchAll');
 }
