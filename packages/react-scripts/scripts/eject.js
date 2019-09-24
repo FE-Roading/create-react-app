@@ -62,6 +62,27 @@ console.log(
 );
 console.log();
 
+/*************************
+ * 整个实现过程如下：
+ * 1、确认是否需要继续当前操作——暴露webpack等配置信息？是——继续，否——退出
+ * 2、如果有git源代码管理工具？否——继续；是——是否有未保存的记录？是——退出，否继续
+ * 3、读取react-scripts待复制的文件夹及其下的文件，分别确认所有内容在项目根目录下是否存在，有一个存在则直接退出。检测的文件夹：['config', 'config/jest', 'scripts']
+ * 4、生成相关的jest配置：jestConfig
+ * 5、在项目目录下，创建待复制的文件件
+ * 6、相关文件复制：在文件复制文件时，替换掉@remove-on-eject-begin...@remove-on-eject-end之间的内容
+ * 7、package.json配置修改并保存：
+ *   > devDependencies、dependencies中删除react-scripts
+ *   > dependencies依赖添加：react-scripts的dependencies中，除了也属于optionalDependencies的所有依赖，全部添加到项目依赖中
+ *   > dependencies依赖是所有字段全部按依赖名称重新排列一次
+ *   > scripts字段：用react-scripts的bin字段的key去匹配项目package.json的scripts中所有的value，将匹配到的结果全部替换为node scripts/[key].js
+ *   > scripts字段：删除eject项
+ *   > 添加其他字段：jest、babel、eslintConfig
+ * 8、如果类型声明的入口路径appTypeDeclarations：读取并替换react-scripts types后保存
+ * 9、移除node_modules/.bin/react-scripts命令
+ * 10、重新安装依赖
+ * 11、如果有git则直接提交git记录
+ *
+ */
 inquirer
   .prompt({
     type: 'confirm',
@@ -113,7 +134,7 @@ inquirer
 
     const folders = ['config', 'config/jest', 'scripts'];
 
-    // Make shallow array of files paths
+    // Make shallow array of files paths：react-scripts目录下所有复制的文件路径列表
     const files = folders.reduce((files, folder) => {
       return files.concat(
         fs
