@@ -3,6 +3,7 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ * 构建前：所有文件大小的统计，构建后的文件相关信息输出
  */
 
 'use strict';
@@ -11,10 +12,12 @@ var fs = require('fs');
 var path = require('path');
 var chalk = require('chalk');
 var filesize = require('filesize');
+// 递归遍历出指定文件夹里面的所有的文件
 var recursive = require('recursive-readdir');
 var stripAnsi = require('strip-ansi');
 var gzipSize = require('gzip-size').sync;
 
+// 文件过滤
 function canReadAsset(asset) {
   return (
     /\.(js|css)$/.test(asset) &&
@@ -26,7 +29,7 @@ function canReadAsset(asset) {
 // Prints a detailed summary of build files.
 function printFileSizesAfterBuild(
   webpackStats,
-  previousSizeMap,
+  previousSizeMap, // measureFileSizesBeforeBuild的输出结果：构建前的文件信息
   buildFolder,
   maxBundleGzipSize,
   maxChunkGzipSize
@@ -129,7 +132,14 @@ function getDifferenceLabel(currentSize, previousSize) {
     return '';
   }
 }
-
+/**
+ * 检查待构建文件夹的所有文件大小
+ * @param {string} buildFolder 构建的根目录
+ * @return {object} {
+ *   root, // 待构建的根目录
+ *   sizes, // 以文件名为key，文件大小为value的对象
+ * }
+ */
 function measureFileSizesBeforeBuild(buildFolder) {
   return new Promise(resolve => {
     recursive(buildFolder, (err, fileNames) => {

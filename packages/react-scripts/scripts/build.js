@@ -49,22 +49,33 @@ const printFileSizesAfterBuild = FileSizeReporter.printFileSizesAfterBuild;
 const useYarn = fs.existsSync(paths.yarnLockFile);
 
 // These sizes are pretty large. We'll warn for bundles exceeding them.
-const WARN_AFTER_BUNDLE_GZIP_SIZE = 512 * 1024;
-const WARN_AFTER_CHUNK_GZIP_SIZE = 1024 * 1024;
+const WARN_AFTER_BUNDLE_GZIP_SIZE = 512 * 1024; // 构建后，单个文件大小的警告尺寸
+const WARN_AFTER_CHUNK_GZIP_SIZE = 1024 * 1024; // 构建后，单个chunk文件大小的警告尺寸
 
-const isInteractive = process.stdout.isTTY;
+const isInteractive = process.stdout.isTTY; //是console模式模式？
 
 // Warn and crash if required files are missing
+// 必要的入口文件检测：项目根目录下的public/index.html和src/index.js，不存在直接退出
 if (!checkRequiredFiles([paths.appHtml, paths.appIndexJs])) {
   process.exit(1);
 }
 
-// Generate configuration
+// Generate configuration：生成webpack配置
 const config = configFactory('production');
 
 // We require that you explicitly set browsers and do not fall back to
 // browserslist defaults.
 const { checkBrowsers } = require('react-dev-utils/browsersHelper');
+/********************
+  前端处理一堆环境变量，还有加载一堆配置，全都用在这一块。这里主要做的就是把环境变量和配置组装起来，开个webpack本地调试服务。主要做的事情有:
+  1、检测是否配置browserslist。如果最终都没有browserlist则直接退出
+  2. 在构建前，检测出所有文件大小的map
+  3. 清空构建的输出目录
+  5. 复制待构建目录的public目录到构建目录：静态文件夹名——paths.appPublic
+  6. 开始webpack构建
+  7. 构建完成后，输出相关的构建信息：警告/警告/错误、文件大小信息、后续操作的提示
+ * 
+ */
 checkBrowsers(paths.appPath, isInteractive)
   .then(() => {
     // First, read the current file sizes in build directory.

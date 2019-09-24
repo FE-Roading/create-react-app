@@ -3,6 +3,7 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ * webpack构建完成后，输出相关的提示信息
  */
 
 'use strict';
